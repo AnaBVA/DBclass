@@ -1,2 +1,2 @@
-seq = "AT"
+seq = "AG"
 print(seq * 25)
