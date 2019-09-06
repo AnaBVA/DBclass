@@ -16,10 +16,10 @@ import mysql.connector
 # Establecer la concexion
 #######################################
 mydb = mysql.connector.connect(
-  host="localhost",
+  host="localhost", # o IP
   user="root",
   passwd="root",
-  port = '8889'
+  port = '8889' #3306
   #database = "DB"
 )
 
