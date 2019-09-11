@@ -28,20 +28,22 @@ mycursor = mydb.cursor()
 #######################################
 # metodo execute para ejecutar acciones dentro de mysql
 #######################################
-mycursor.execute("CREATE DATABASE mydatabase")
+#mycursor.execute("CREATE DATABASE TraitsQTLs_Genetica")
 
 mydb = mysql.connector.connect(
   host="localhost",
   user="root",
-  passwd="root"
-  database = "mydatabase"
+  passwd="root",
+  database = "TraitsQTLs_Genetica",
+  port = '8889'
 )
 
+mycursor = mydb.cursor()
 
 #######################################
 #Mostrar bases de datos
 #######################################
-mycursor.execute("SHOW DATABASES")
+mycursor.execute("SHOW TABLES")
 #Imprimi
 for x in mycursor:
   print(x)
@@ -49,7 +51,29 @@ for x in mycursor:
 #######################################
 # Crear una tabla
 #######################################
-mycursor.execute("CREATE TABLE customers (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), address VARCHAR(255))")
+sqlDatosGenerales = "CREATE TABLE DatosGenerales ( \
+  persona_id INT AUTO_INCREMENT PRIMARY KEY, \
+  nombre VARCHAR(255), \
+  sexo CHAR(1),\
+  edad INT(2), \
+  estado  VARCHAR(10)\
+  )"
+
+mycursor.execute(sqlDatosGenerales)
+
+
+sqlMediciones = "CREATE TABLE Mediciones ( \
+  medicion_id INT AUTO_INCREMENT PRIMARY KEY, \
+  tipo VARCHAR(16), \
+  medida FLOAT, \
+  persona_id INT, \
+  CONSTRAINT persona_fk \
+  FOREIGN KEY (persona_id) \
+     REFERENCES DatosGenerales(persona_id) \
+  )"
+
+mycursor.execute(sqlMediciones)
+#mycursor.execute("Drop Table Mediciones")
 
 #######################################
 #Mostrar las tablas
@@ -61,13 +85,24 @@ for x in mycursor:
   print(x)
 
 #######################################
-# Popular la tabla
+# Poblar la tabla
+#######################################
+#######################################
+# DatosGenerales
 #######################################
 # formato sql
-sql = "INSERT INTO customers (name, address) VALUES (%s, %s)"
+sql = "INSERT INTO DatosGenerales (nombre, sexo, edad, estado) VALUES (%s, %s, %s, %s)"
 # variable para incresar en mysql
-val = ("John", "Highway 21")
+val = ("Mario Santana", "M","35","CDMX")
 mycursor.execute(sql, val)
+
+sql2 = "SELECT * FROM DatosGenerales"
+
+#######################################
+# Mediciones
+#######################################
+sqlmed = "INSERT INTO Mediciones (tipo,medida,persona_id) VALUES (%s,%s,%s)"
+mycursor.execute(sqlmed, val)
 
 #######################################
 # Super importante hacer COMMIT!!!!!!!!
@@ -83,26 +118,36 @@ print(mycursor.rowcount, "record inserted.")
 #######################################
 # Popular la tabla con más de un valor
 #######################################
-# formato sql
-sql = "INSERT INTO customers (name, address) VALUES (%s, %s)"
-# variables
-val = [
-  ('Peter', 'Lowstreet 4'),
-  ('Amy', 'Apple st 652'),
-  ('Hannah', 'Mountain 21'),
-  ('Michael', 'Valley 345'),
-  ('Sandy', 'Ocean blvd 2'),
-  ('Betty', 'Green Grass 1'),
-  ('Richard', 'Sky st 331'),
-  ('Susan', 'One way 98'),
-  ('Vicky', 'Yellow Garden 2'),
-  ('Ben', 'Park Lane 38'),
-  ('William', 'Central st 954'),
-  ('Chuck', 'Main Road 989'),
-  ('Viola', 'Sideway 1633')
-]
+# libreria para checar nan
+import math
 
-mycursor.executemany(sql, val)
+# Valor de la altura para cada individuo
+val = []
+altura = data.iloc[0,4]
+val = [["altura",altura,1]]
+
+# Valores de la frente para cada individuo
+medic_frente = list(data.iloc[0,5:10])
+for i in medic_frente:
+    if math.isnan(i):
+        print ("No hay medicion de frente")
+    else:
+        val.append(["frente",i,1])
+
+# Valores del brazo para cada individuo
+medic_brazo = data.iloc[0,11:16]
+for i in medic_brazo:
+        if math.isnan(i):
+            print ("No hay medicion de brazo")
+        else:
+            val.append(["brazo",i,1])
+
+# Lenguaje SQL para insertar datos en la tabla de Mediciones
+sqlmed ="INSERT INTO Mediciones (tipo,medida,persona_id) VALUES (%s, %s, %s)"
+if len(val) <= 1:
+    mycursor.execute(sqlmed, val[0])
+else:
+    mycursor.executemany(sqlmed, val)
 
 #Hacer commit
 mydb.commit()
@@ -112,16 +157,82 @@ mydb.commit()
 #######################################
 import pandas as pd
 # leer el archivo
-data = pd.csv('file.txt') # header, names
+data = pd.read_csv('Mediciones2.csv') # header, names
+
+d = data.iloc[1:,:]
 
 # para cada linea insertar en Mysql
-for row in data.iterrows():
-    sql = "INSERT INTO customers (name, address) VALUES (%s, %s)"
-    # variable para incresar en mysql
-    val = row # los valores tienen que ser los que quieras inserar
-    mycursor.execute(sql, val)
 
+val = []
+# Lenguaje SQL para insertar datos en la tabla de customers
+sql = "INSERT INTO DatosGenerales (nombre, sexo, edad, estado) VALUES (%s, %s, %s, %s)"
+# Lenguaje SQL para insertar datos en la tabla de Mediciones
+sqlmed ="INSERT INTO Mediciones (tipo,medida,persona_id) VALUES (%s, %s, %s)"
+
+for row in d.iterrows():
+    # variable para incresar en mysql
+    val_cus = list(row[1][0:4]) # los valores tienen que ser los que quieras inserar
+    mycursor.execute(sql, val_cus) #Importar valores en customers
+    # Valor de la altura para cada individuo
+    altura = row[1][4]
+    val = [["altura",altura,row[0]+1]] # le sumo 1 porque ya existe Mario
+    # Valores de la frente para cada individuo
+    medic_frente = list(row[1][5:10])
+    for i in medic_frente:
+        if math.isnan(i):
+            print ("No hay medicion de frente")
+        else:
+            val.append(["frente",i,row[0]+1])
+    #print(val)
+    # Valores del brazo para cada individuo
+    medic_brazo = list(row[1][11:16])
+    for ii in medic_brazo:
+        if math.isnan(ii):
+            print ("No hay medicion de brazo")
+        else:
+            val.append(["brazo",ii,row[0]+1])
+    #print(val)
+    if len(val) == 1:
+        mycursor.execute(sqlmed, val[0])
+    else:
+        mycursor.executemany(sqlmed, val)
+
+
+
+#Hacer commit
 mydb.commit()
+
+
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  passwd="root",
+  database = "TraitsQTLs_Genetica",
+  port = '8889'
+)
+
+mycursor = mydb.cursor()
+
+mycursor.execute("SELECT * from DatosGenerales")
+#mycursor.execute("SELECT tipo from Mediciones")
+datosgenerales = mycursor.fetchall()
+#mycursor.execute("SHOW columns from DatosGenerales")
+
+mycursor.execute("SELECT medida from Mediciones \
+WHERE tipo ='altura'")
+mediciones = mycursor.fetchall()
+
+mycursor.execute("SELECT medida from Mediciones \
+INNER JOIN DatosGenerales on DatosGenerales.persona_id=Mediciones.persona_id \
+WHERE tipo ='altura'\
+AND DatosGenerales.sexo = 'H'\
+")
+mediciones = mycursor.fetchall()
+
+m = list()
+for i in mediciones:
+    m.append(i[0])
+
 
 #######################################
 # Usando sqlalchemy
@@ -132,12 +243,12 @@ import sqlalchemy
 
 # conexion para sqlalchemy
 # mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
-engine = sqlalchemy.create_engine('mysql+mysqlconnector://root:root@localhost[8889]/')
+engine = sqlalchemy.create_engine('mysql+mysqlconnector://root:root@localhost[8889]/TraitsQTLs_Genetica')
 
 # leer el csv
 data = pd.csv('file.txt') # checar nombres de columnas igual a la tabla en MySQL
 # inserar en la tabla
-data.to_sql('customers', con = engine)
+data.to_sql('DatosGenerales', con = engine)
 #######################################
 
 
