@@ -1,0 +1,4 @@
+
+conda install http.server
+
+chmod a+x cgi.py 
